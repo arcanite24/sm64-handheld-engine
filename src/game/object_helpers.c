@@ -1554,6 +1554,7 @@ void cur_obj_set_pos_to_home(void) {
     o->oPosX = o->oHomeX;
     o->oPosY = o->oHomeY;
     o->oPosZ = o->oHomeZ;
+    o->header.gfx.skipInterpolationTimestamp = gGlobalTimer;
 }
 
 void cur_obj_set_pos_to_home_and_stop(void) {
@@ -2742,6 +2743,8 @@ s32 cur_obj_update_dialog_with_cutscene(s32 actionArg, s32 dialogFlags, s32 cuts
 
 s32 cur_obj_has_model(u16 modelID) {
     if (o->header.gfx.sharedChild == gLoadedGraphNodes[modelID]) {
+        return TRUE;
+    } else if (o->header.gfx.sharedChild && gLoadedGraphNodes[modelID] && o->header.gfx.sharedChild->georef == gLoadedGraphNodes[modelID]->georef) {
         return TRUE;
     } else {
         return FALSE;

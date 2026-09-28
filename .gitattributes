@@ -8,13 +8,15 @@
 *.in text
 *.js text
 *.md text
-*.py text
-*.sh text
+*.py text eol=lf
+*.sh text eol=lf
 *.ld text
 *.inc text
 *.txt text
 *.json text
 *.yaml text
+Makefile text eol=lf
+*.mk text eol=lf
 
 # Same for binary
 *.bin binary

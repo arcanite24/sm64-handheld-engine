@@ -161,11 +161,11 @@ static int test_vsync(void) {
      * On SGI models, turning vsync off will help with framerate, but the best is 60fps patch.
      * The actual solution would be to render or copy the buffer to a texture
      * and then render that to the screen.*/
-    render_multiplier = (average + 15) / 30;
+    render_multiplier = (average + 30) / 60;
     if (render_multiplier == 0)
         render_multiplier = 1;
 
-    return 1;
+    return 2;
 #endif
 }
 
@@ -173,7 +173,11 @@ static inline void gfx_sdl_set_vsync(const bool enabled) {
     if (enabled) {
         // try to detect refresh rate
         SDL_GL_SetSwapInterval(1);
-        const int vblanks = gCLIOpts.SyncFrames ? (int)gCLIOpts.SyncFrames : test_vsync();
+        int vblanks = test_vsync();
+        if (vblanks & 1)
+            vblanks = 0; // not divisible by 60, fuck that
+        else
+            vblanks /= 2;
         if (vblanks) {
             printf("determined swap interval: %d\n", vblanks);
             SDL_GL_SetSwapInterval(vblanks);
@@ -258,7 +262,7 @@ static void gfx_sdl_init(const char *window_title) {
     gfx_sdl_set_fullscreen();
 
     perf_freq = SDL_GetPerformanceFrequency();
-    frame_time = perf_freq / FRAMERATE;
+    frame_time = perf_freq / (2 * FRAMERATE);
 
     for (size_t i = 0; i < sizeof(windows_scancode_table) / sizeof(SDL_Scancode); i++) {
         inverted_scancode_table[windows_scancode_table[i]] = i;

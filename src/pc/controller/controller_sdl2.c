@@ -171,7 +171,7 @@ static void controller_sdl_read(OSContPad *pad) {
     SDL_GameControllerUpdate();
 
     if (sdl_cntrl != NULL && !SDL_GameControllerGetAttached(sdl_cntrl)) {
-        SDL_HapticClose(sdl_haptic);
+        if (sdl_haptic) SDL_HapticClose(sdl_haptic);
         SDL_GameControllerClose(sdl_cntrl);
         sdl_cntrl = NULL;
         sdl_haptic = NULL;

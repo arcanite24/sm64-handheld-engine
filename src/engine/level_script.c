@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include "sm64.h"
+#include "data/dynos.c.h"
 #include "audio/external.h"
 #include "buffers/framebuffers.h"
 #include "buffers/zbuffer.h"
@@ -869,11 +870,15 @@ struct LevelCommand *level_script_execute(struct LevelCommand *cmd) {
     sCurrentCmd = cmd;
 
     while (sScriptStatus == SCRIPT_RUNNING) {
+        void *dynosCurrCmd = (void *) sCurrentCmd;
         LevelScriptJumpTable[sCurrentCmd->type]();
+        void *dynosNextCmd = dynos_update_cmd(dynosCurrCmd);
+        if (dynosNextCmd) sCurrentCmd = dynosNextCmd;
     }
 
     profiler_log_thread5_time(LEVEL_SCRIPT_EXECUTE);
     init_render_image();
+    dynos_update_gfx();
     render_game();
 #ifdef TOUCH_CONTROLS
     render_touch_controls();

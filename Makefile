@@ -451,6 +451,7 @@ ifeq ($(TARGET_ANDROID),1)
 INCLUDE_CFLAGS += -I SDL/include
 endif
 ENDIAN_BITWIDTH := $(BUILD_DIR)/endian-and-bitwidth
+include dynos.mk
 
 # Huge deleted N64 section was here
 
