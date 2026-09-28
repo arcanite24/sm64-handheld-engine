@@ -26,7 +26,6 @@
 #define MAX_JOYBINDS 32
 #define MAX_MOUSEBUTTONS 8 // arbitrary
 #define MAX_JOYBUTTONS 32  // arbitrary; includes virtual keys for triggers
-#define AXIS_THRESHOLD (30 * 256)
 
 int mouse_x;
 int mouse_y;
@@ -219,8 +218,11 @@ static void controller_sdl_read(OSContPad *pad) {
         update_button(i, new);
     }
 
-    update_button(VK_LTRIGGER - VK_BASE_SDL_GAMEPAD, ltrig > AXIS_THRESHOLD);
-    update_button(VK_RTRIGGER - VK_BASE_SDL_GAMEPAD, rtrig > AXIS_THRESHOLD);
+    const unsigned int triggerPercent = configTriggerThreshold < 5 ? 5 :
+                                        configTriggerThreshold > 60 ? 60 : configTriggerThreshold;
+    const int triggerThreshold = triggerPercent * 32767 / 100;
+    update_button(VK_LTRIGGER - VK_BASE_SDL_GAMEPAD, ltrig > triggerThreshold);
+    update_button(VK_RTRIGGER - VK_BASE_SDL_GAMEPAD, rtrig > triggerThreshold);
 
     u32 buttons_down = 0;
     for (u32 i = 0; i < num_joy_binds; ++i)

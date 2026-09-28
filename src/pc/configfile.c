@@ -57,7 +57,7 @@ unsigned int configEnvVolume = MAX_VOLUME;
 
 // Keyboard mappings (VK_ values, by default keyboard/gamepad/mouse)
 unsigned int configKeyA[MAX_BINDS]          = { 0x0026,   0x1000,     0x1103     };
-unsigned int configKeyB[MAX_BINDS]          = { 0x0033,   0x1002,     0x1101     };
+unsigned int configKeyB[MAX_BINDS]          = { 0x0033,   0x1001,     0x1101     };
 unsigned int configKeyStart[MAX_BINDS]      = { 0x0039,   0x1006,     VK_INVALID };
 unsigned int configKeyL[MAX_BINDS]          = { 0x002A,   0x1009,     0x1104     };
 unsigned int configKeyR[MAX_BINDS]          = { 0x0036,   0x100A,     0x101B     };
@@ -71,6 +71,7 @@ unsigned int configKeyStickDown[MAX_BINDS]  = { 0x001F,   VK_INVALID, VK_INVALID
 unsigned int configKeyStickLeft[MAX_BINDS]  = { 0x001E,   VK_INVALID, VK_INVALID };
 unsigned int configKeyStickRight[MAX_BINDS] = { 0x0020,   VK_INVALID, VK_INVALID };
 unsigned int configStickDeadzone = 16; // 16*DEADZONE_STEP=4960 (the original default deadzone)
+unsigned int configTriggerThreshold = 23; // Percent of trigger travel before a press
 unsigned int configRumbleStrength = 50;
 #ifdef EXTERNAL_DATA
 bool configPrecacheRes = true;
@@ -121,6 +122,7 @@ static const struct ConfigOption options[] = {
     {.name = "key_stickleft",        .type = CONFIG_TYPE_BIND, .uintValue = configKeyStickLeft},
     {.name = "key_stickright",       .type = CONFIG_TYPE_BIND, .uintValue = configKeyStickRight},
     {.name = "stick_deadzone",       .type = CONFIG_TYPE_UINT, .uintValue = &configStickDeadzone},
+    {.name = "trigger_threshold",    .type = CONFIG_TYPE_UINT, .uintValue = &configTriggerThreshold},
     {.name = "rumble_strength",      .type = CONFIG_TYPE_UINT, .uintValue = &configRumbleStrength},
     #ifdef EXTERNAL_DATA
     {.name = "precache",             .type = CONFIG_TYPE_BOOL, .boolValue = &configPrecacheRes},
