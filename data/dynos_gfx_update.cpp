@@ -1,4 +1,7 @@
 #include "dynos.cpp.h"
+#ifdef __ANDROID__
+#include <android/log.h>
+#endif
 extern "C" {
 #include "object_fields.h"
 #include "game/level_update.h"
@@ -130,7 +133,7 @@ static void DynOS_Gfx_UpdateModelData(struct Object *aObject, s32 aActorIndex) {
         if (_Enabled && _ActorGfx->mPackIndex == -1) {
 
             // Load Gfx data from binary
-            SysPath _Filename = fstring("%s/%s.bin", pDynosPacks[i]->mPath.begin(), DynOS_Geo_GetActorName(aActorIndex));
+            SysPath _Filename = fstring("%s/%s.bin", pDynosPacks[i]->mPath.c_str(), DynOS_Geo_GetActorName(aActorIndex));
             GfxData *_GfxData = DynOS_Gfx_LoadFromBinary(_Filename);
             if (_GfxData == NULL) {
                 continue;
@@ -165,6 +168,19 @@ static void DynOS_Gfx_UpdateModelData(struct Object *aObject, s32 aActorIndex) {
 
     // Update object
     aObject->header.gfx.sharedChild = _ActorGfx->mGraphNode;
+#ifdef __ANDROID__
+    static bool loggedMario = false;
+    static bool loggedBowser = false;
+    const char *actor = DynOS_Geo_GetActorName(aActorIndex);
+    bool *logged = strcmp(actor, "mario_geo") == 0 ? &loggedMario :
+                   strcmp(actor, "bowser_geo") == 0 ? &loggedBowser : NULL;
+    if (logged && !*logged) {
+        const char *pack = _ActorGfx->mPackIndex < 0 ? "Classic" :
+                           pDynosPacks[_ActorGfx->mPackIndex]->mPath.c_str();
+        __android_log_print(ANDROID_LOG_INFO, "SM64Handheld", "%s model: %s", actor, pack);
+        *logged = true;
+    }
+#endif
 }
 
 void DynOS_Gfx_Update() {
