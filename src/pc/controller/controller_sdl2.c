@@ -51,13 +51,17 @@ static u32 last_joybutton = VK_INVALID;
 
 static inline void controller_add_binds(const u32 mask, const u32 *btns) {
     for (u32 i = 0; i < MAX_BINDS; ++i) {
-        if (btns[i] >= VK_BASE_SDL_GAMEPAD && btns[i] <= VK_BASE_SDL_GAMEPAD + VK_SIZE) {
-            if (btns[i] >= VK_BASE_SDL_MOUSE && num_joy_binds < MAX_JOYBINDS) {
-                mouse_binds[num_mouse_binds][0] = btns[i] - VK_BASE_SDL_MOUSE;
+        if (btns[i] >= VK_BASE_SDL_GAMEPAD && btns[i] < VK_BASE_SDL_GAMEPAD + VK_SIZE) {
+            if (btns[i] >= VK_BASE_SDL_MOUSE) {
+                const u32 button = btns[i] - VK_BASE_SDL_MOUSE;
+                if (button < 1 || button > MAX_MOUSEBUTTONS || num_mouse_binds >= MAX_JOYBINDS) continue;
+                mouse_binds[num_mouse_binds][0] = button;
                 mouse_binds[num_mouse_binds][1] = mask;
                 ++num_mouse_binds;
-            } else if (num_mouse_binds < MAX_JOYBINDS) {
-                joy_binds[num_joy_binds][0] = btns[i] - VK_BASE_SDL_GAMEPAD;
+            } else {
+                const u32 button = btns[i] - VK_BASE_SDL_GAMEPAD;
+                if (button >= MAX_JOYBUTTONS || num_joy_binds >= MAX_JOYBINDS) continue;
+                joy_binds[num_joy_binds][0] = button;
                 joy_binds[num_joy_binds][1] = mask;
                 ++num_joy_binds;
             }
@@ -174,6 +178,8 @@ static void controller_sdl_read(OSContPad *pad) {
         SDL_GameControllerClose(sdl_cntrl);
         sdl_cntrl = NULL;
         sdl_haptic = NULL;
+        bzero(joy_buttons, sizeof(joy_buttons));
+        last_joybutton = VK_INVALID;
     }
 
     if (sdl_cntrl == NULL) {
@@ -312,6 +318,7 @@ static void controller_sdl_shutdown(void) {
     init_ok = false;
 }
 
+#ifndef CONTROLLER_BINDINGS_TEST
 struct ControllerAPI controller_sdl = {
     VK_BASE_SDL_GAMEPAD,
     controller_sdl_init,
@@ -322,5 +329,6 @@ struct ControllerAPI controller_sdl = {
     controller_sdl_bind,
     controller_sdl_shutdown
 };
+#endif
 
 #endif // CAPI_SDL2
