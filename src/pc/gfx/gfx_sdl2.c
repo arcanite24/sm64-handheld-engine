@@ -167,7 +167,10 @@ static int test_vsync(void) {
     const int interval = android_swap_interval(average);
     if (!interval) return 0;
     if (interval == 2) {
-        SDL_GL_SetSwapInterval(2);
+        if (SDL_GL_SetSwapInterval(2) < 0) {
+            __android_log_print(ANDROID_LOG_WARN, "SM64Pacing", "swap interval 2 rejected: %s", SDL_GetError());
+            return 0;
+        }
         // Some EGL drivers clamp interval 2 to 1; only trust the measured rate.
         if (android_swap_interval(measure_vsync_hz()) != 1) return 0;
     }
@@ -176,32 +179,44 @@ static int test_vsync(void) {
 }
 
 static inline void gfx_sdl_set_vsync(const bool enabled) {
-    if (enabled) {
+    if (enabled && SDL_GL_SetSwapInterval(1) == 0) {
         // try to detect refresh rate
-        SDL_GL_SetSwapInterval(1);
         int vblanks = test_vsync();
         if (vblanks & 1)
             vblanks = 0; // not divisible by 60, fuck that
         else
             vblanks /= 2;
-        if (vblanks) {
+        if (vblanks && SDL_GL_SetSwapInterval(vblanks) == 0) {
             printf("determined swap interval: %d\n", vblanks);
 #ifdef __ANDROID__
             __android_log_print(ANDROID_LOG_INFO, "SM64Pacing", "swap interval=%d", vblanks);
 #endif
-            SDL_GL_SetSwapInterval(vblanks);
             use_timer = false;
             return;
+        } else if (vblanks) {
+            printf("could not set swap interval %d: %s\n", vblanks, SDL_GetError());
+#ifdef __ANDROID__
+            __android_log_print(ANDROID_LOG_WARN, "SM64Pacing", "swap interval %d rejected: %s", vblanks, SDL_GetError());
+#endif
         } else {
             printf("could not determine swap interval, falling back to timer sync\n");
         }
+    } else if (enabled) {
+        printf("could not enable vsync: %s\n", SDL_GetError());
+#ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_WARN, "SM64Pacing", "vsync rejected: %s", SDL_GetError());
+#endif
     }
 
     use_timer = true;
 #ifdef __ANDROID__
-    __android_log_print(ANDROID_LOG_INFO, "SM64Pacing", "vsync probe failed; using 60 FPS timer");
+    __android_log_print(ANDROID_LOG_INFO, "SM64Pacing", "vsync unavailable; using 60 FPS timer");
 #endif
-    SDL_GL_SetSwapInterval(0);
+    if (SDL_GL_SetSwapInterval(0) < 0) {
+#ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_WARN, "SM64Pacing", "could not disable vsync for timer: %s", SDL_GetError());
+#endif
+    }
 }
 
 static void gfx_sdl_set_fullscreen(void) {
