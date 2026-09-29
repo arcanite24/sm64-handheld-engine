@@ -54,10 +54,6 @@
 #define HASHMAP_LEN (MAX_CACHED_TEXTURES * 2)
 #define HASH_MASK (HASHMAP_LEN - 1)
 
-#ifdef __ANDROID__
-int render_multiplier;
-#endif
-
 struct RGBA {
     uint8_t r, g, b, a;
 };
@@ -1790,18 +1786,6 @@ void gfx_run(Gfx *commands) {
     }
     dropped_frame = false;
     
-#ifdef __ANDROID__
-    for (int i = 0; i < (configWindow.vsync ? render_multiplier : 1); i++) {
-        double t0 = gfx_wapi->get_time();
-        gfx_rapi->start_frame();
-        gfx_run_dl(commands);
-        gfx_flush();
-        double t1 = gfx_wapi->get_time();
-        //printf("Process %f %f\n", t1, t1 - t0);
-        gfx_rapi->end_frame();
-        gfx_wapi->swap_buffers_begin();
-    }
-#else
     double t0 = gfx_wapi->get_time();
     gfx_rapi->start_frame();
     gfx_run_dl(commands);
@@ -1810,7 +1794,6 @@ void gfx_run(Gfx *commands) {
     //printf("Process %f %f\n", t1, t1 - t0);
     gfx_rapi->end_frame();
     gfx_wapi->swap_buffers_begin();
-#endif
 }
 
 void gfx_end_frame(void) {

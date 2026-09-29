@@ -46,7 +46,6 @@
 
 #ifdef __ANDROID__
 #include "android_frame_pacing.h"
-extern int render_multiplier;
 #endif
 
 static SDL_Window *wnd;
@@ -124,7 +123,7 @@ static inline void sys_sleep(const uint64_t us) {
     usleep(us);
 }
 
-static int test_vsync(void) {
+static float measure_vsync_hz(void) {
     // Even if SDL_GL_SetSwapInterval succeeds, it doesn't mean that VSync actually works.
     // A 60 Hz monitor should have a swap interval of 16.67 milliseconds.
     // Try to detect the length of a vsync by swapping buffers some times.
@@ -137,15 +136,19 @@ static int test_vsync(void) {
     for (int i = 0; i < 8; ++i)
         SDL_GL_SwapWindow(wnd);
 
-    Uint32 start = SDL_GetTicks();
+    Uint64 start = SDL_GetPerformanceCounter();
     SDL_GL_SwapWindow(wnd);
     SDL_GL_SwapWindow(wnd);
     SDL_GL_SwapWindow(wnd);
     SDL_GL_SwapWindow(wnd);
-    Uint32 end = SDL_GetTicks();
+    Uint64 end = SDL_GetPerformanceCounter();
 
-    if (end == start) return 0;
-    const float average = 4.0 * 1000.0 / (end - start);
+    if (end == start) return 0.0f;
+    return 4.0f * SDL_GetPerformanceFrequency() / (end - start);
+}
+
+static int test_vsync(void) {
+    const float average = measure_vsync_hz();
 
 #ifndef __ANDROID__
     if (average > 27.0f && average < 33.0f) return 1;
@@ -156,16 +159,18 @@ static int test_vsync(void) {
 
     return 0;
 #else
-    render_multiplier = android_frame_multiplier(average);
-    if (!render_multiplier) return 0;
-    return 2;
+    const int interval = android_swap_interval(average);
+    if (!interval) return 0;
+    if (interval == 2) {
+        SDL_GL_SetSwapInterval(2);
+        // Some EGL drivers clamp interval 2 to 1; only trust the measured rate.
+        if (android_swap_interval(measure_vsync_hz()) != 1) return 0;
+    }
+    return 2 * interval;
 #endif
 }
 
 static inline void gfx_sdl_set_vsync(const bool enabled) {
-#ifdef __ANDROID__
-    render_multiplier = 1;
-#endif
     if (enabled) {
         // try to detect refresh rate
         SDL_GL_SetSwapInterval(1);
@@ -408,10 +413,10 @@ static void gfx_sdl_set_touchscreen_callbacks(void (*down)(void* event), void (*
 }
 
 static bool gfx_sdl_start_frame(void) {
-    static Uint32 last_time = 0;
+    static double last_time = 0.0;
     bool ret = true;
-    Uint32 ticks = SDL_GetTicks();
-    if ((last_time == 0) || (last_time + 10000 < ticks))
+    const double ticks = SDL_GetPerformanceCounter();
+    if ((last_time == 0.0) || (last_time + 10.0 * perf_freq < ticks))
         last_time = ticks;
     if (last_time + frame_time < ticks)
         ret = false;
