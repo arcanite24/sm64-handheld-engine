@@ -21,7 +21,10 @@ int64_t fs_read(fs_file_t *file, void *buf, const uint64_t size) {
 void fs_close(fs_file_t *file) { (void) file; abort(); }
 
 int main(void) {
-    char directory[] = "/tmp/sm64-save-XXXXXX";
+    char directory[SYS_MAX_PATH];
+    const char *temp_root = getenv("TMPDIR");
+    if (!temp_root) temp_root = "/tmp";
+    assert(snprintf(directory, sizeof(directory), "%s/sm64-save-XXXXXX", temp_root) < (int) sizeof(directory));
     assert(mkdtemp(directory));
     assert(snprintf(save_path, sizeof(save_path), "%s/save.bin", directory) < (int) sizeof(save_path));
     unsigned char data[512];
