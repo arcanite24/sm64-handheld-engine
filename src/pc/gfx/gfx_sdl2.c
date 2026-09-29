@@ -45,7 +45,12 @@
 #endif
 
 #ifdef __ANDROID__
+#include <android/log.h>
 #include "android_frame_pacing.h"
+
+static Uint64 trace_started, trace_last_swap;
+static unsigned trace_frames, trace_skipped, trace_gaps;
+static double trace_max_gap_ms, trace_max_swap_ms;
 #endif
 
 static SDL_Window *wnd;
@@ -181,6 +186,9 @@ static inline void gfx_sdl_set_vsync(const bool enabled) {
             vblanks /= 2;
         if (vblanks) {
             printf("determined swap interval: %d\n", vblanks);
+#ifdef __ANDROID__
+            __android_log_print(ANDROID_LOG_INFO, "SM64Pacing", "swap interval=%d", vblanks);
+#endif
             SDL_GL_SetSwapInterval(vblanks);
             use_timer = false;
             return;
@@ -190,6 +198,9 @@ static inline void gfx_sdl_set_vsync(const bool enabled) {
     }
 
     use_timer = true;
+#ifdef __ANDROID__
+    __android_log_print(ANDROID_LOG_INFO, "SM64Pacing", "vsync probe failed; using 60 FPS timer");
+#endif
     SDL_GL_SetSwapInterval(0);
 }
 
@@ -423,6 +434,9 @@ static bool gfx_sdl_start_frame(void) {
 #endif
     if (last_time + frame_time < ticks)
         ret = false;
+#ifdef __ANDROID__
+    if (!ret) trace_skipped++;
+#endif
     last_time += frame_time;
     return ret;
 }
@@ -453,7 +467,31 @@ static inline void sync_framerate_with_timer(void) {
 
 static void gfx_sdl_swap_buffers_begin(void) {
     if (use_timer) sync_framerate_with_timer();
+#ifdef __ANDROID__
+    const Uint64 before = SDL_GetPerformanceCounter();
+    if (trace_last_swap) {
+        const double gap_ms = (before - trace_last_swap) * 1000.0 / perf_freq;
+        if (gap_ms > 25.0) trace_gaps++;
+        if (gap_ms > trace_max_gap_ms) trace_max_gap_ms = gap_ms;
+    }
+#endif
     SDL_GL_SwapWindow(wnd);
+#ifdef __ANDROID__
+    const Uint64 after = SDL_GetPerformanceCounter();
+    const double swap_ms = (after - before) * 1000.0 / perf_freq;
+    if (swap_ms > trace_max_swap_ms) trace_max_swap_ms = swap_ms;
+    trace_last_swap = before;
+    if (!trace_started) trace_started = after;
+    trace_frames++;
+    if (after - trace_started >= 5.0 * perf_freq) {
+        __android_log_print(ANDROID_LOG_INFO, "SM64Pacing",
+                            "frames=%u skipped=%u gaps>25ms=%u max_gap=%.1fms max_swap=%.1fms timer=%d",
+                            trace_frames, trace_skipped, trace_gaps, trace_max_gap_ms, trace_max_swap_ms, use_timer);
+        trace_started = after;
+        trace_frames = trace_skipped = trace_gaps = 0;
+        trace_max_gap_ms = trace_max_swap_ms = 0.0;
+    }
+#endif
 }
 
 static void gfx_sdl_swap_buffers_end(void) {
