@@ -239,6 +239,14 @@ void main_func(void) {
     const char *userpath = gCLIOpts.SavePath[0] ? gCLIOpts.SavePath : sys_user_path();
     fs_init(sys_ropaths, gamedir, userpath);
 
+#ifdef __ANDROID__
+    const char *rompath = fs_get_write_path("baserom.us.z64");
+#else
+    const char *rompath = "baserom.us.z64";
+#endif
+    if (mario_anims_load(rompath) != 0 || demo_inputs_load(rompath) != 0)
+        sys_fatal("Could not load game data from the US ROM at %s.\n", rompath);
+
     configfile_load(configfile_name());
 
     if (gCLIOpts.FullScreen == 1)

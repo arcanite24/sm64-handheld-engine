@@ -1026,10 +1026,10 @@ $(BUILD_DIR)/levels/scripts.o: $(BUILD_DIR)/include/level_headers.h
 $(BUILD_DIR)/include/level_headers.h: levels/level_headers.h.in
 	$(CPP) -I . levels/level_headers.h.in | $(PYTHON) tools/output_level_headers.py > $(BUILD_DIR)/include/level_headers.h
 
-$(BUILD_DIR)/assets/mario_anim_data.c: $(wildcard assets/anims/*.inc.c)
+$(BUILD_DIR)/assets/mario_anim_data.c: tools/mario_anims_converter.py $(wildcard assets/anims/*.inc.c)
 	$(PYTHON) tools/mario_anims_converter.py > $@
 
-$(BUILD_DIR)/assets/demo_data.c: assets/demo_data.json $(wildcard assets/demos/*.bin)
+$(BUILD_DIR)/assets/demo_data.c: tools/demo_data_converter.py assets/demo_data.json assets.json
 	$(PYTHON) tools/demo_data_converter.py assets/demo_data.json $(VERSION_CFLAGS) > $@
 
 # Source code

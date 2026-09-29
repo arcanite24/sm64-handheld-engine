@@ -9,6 +9,7 @@ items = []
 len_mapping = {}
 order_mapping = {}
 line_number_mapping = {}
+rom_slices = []
 
 def raise_error(filename, lineindex, msg):
     raise SyntaxError("Error in " + filename + ":" + str(line_number_mapping[lineindex] + 1) + ": " + msg)
@@ -49,6 +50,20 @@ def parse_array(filename, lines, lineindex, name, is_indices):
     lineindex += 1
     return lineindex
 
+def parse_rom_slice(filename, lines, lineindex):
+    match = re.fullmatch(r"ROM_ASSET_LOAD_ANIM\((\w+),\s*(0x[0-9a-fA-F]+),\s*(\d+),\s*(0x[0-9a-fA-F]+),\s*(\d+)\);", lines[lineindex])
+    if not match:
+        raise_error(filename, lineindex, "Invalid ROM animation slice")
+    name, address, size, segmented_address, segmented_size = match.groups()
+    size = int(size)
+    if int(segmented_address, 0) != 0 or size != int(segmented_size) or size % 2:
+        raise_error(filename, lineindex, "Unsupported ROM animation slice")
+    items.append(("array", name, (name.endswith("_indices"), [])))
+    len_mapping[name] = size // 2
+    order_mapping[name] = len(items)
+    rom_slices.append((name, int(address, 0), size))
+    return lineindex + 1
+
 def parse_file(filename, lines):
     global num_headers
     lineindex = 0
@@ -62,13 +77,16 @@ def parse_file(filename, lines):
         is_struct = line.startswith("struct Animation ") and line.endswith("[] = {")
         is_indices = line.startswith("u16 ") and line.endswith("[] = {")
         is_values = line.startswith("s16 ") and line.endswith("[] = {")
-        if not is_struct and not is_indices and not is_values:
+        is_rom_slice = line.startswith("ROM_ASSET_LOAD_ANIM(")
+        if not is_struct and not is_indices and not is_values and not is_rom_slice:
             raise_error(filename, lineindex, "\"" + line + "\" does not follow the pattern \"static const struct Animation anim_x[] = {\", \"static const u16 anim_x_indices[] = {\" or \"static const s16 anim_x_values[] = {\"")
 
         if is_struct:
             name = lines[lineindex][len("struct Animation "):-6]
             lineindex = parse_struct(filename, lines, lineindex, name)
             num_headers += 1
+        elif is_rom_slice:
+            lineindex = parse_rom_slice(filename, lines, lineindex)
         else:
             name = lines[lineindex][len("s16 "):-6]
             lineindex = parse_array(filename, lines, lineindex, name, is_indices)
@@ -133,20 +151,43 @@ try:
         else:
             is_indices, arr = obj
             type = "u16" if is_indices else "s16"
-            structdef.append("{} {}[{}];".format(type, name, len(arr)))
-            structobj.append("{" + ",".join(arr) + "},")
+            structdef.append("{} {}[{}];".format(type, name, len_mapping[name]))
+            structobj.append("{" + ",".join(arr) + "}," if arr else "{0},")
 
     print("#include \"types.h\"")
     print("#include <stddef.h>")
+    print("#include <stdio.h>")
+    print("#ifndef VERSION_US")
+    print('#error "Runtime Mario animations currently support only the US ROM"')
+    print("#endif")
     print("")
 
-    print("const struct MarioAnimsObj {")
+    print("struct MarioAnimsObj {")
     for s in structdef:
         print(s)
     print("} gMarioAnims = {")
     for s in structobj:
         print(s)
     print("};")
+    print("static const struct RomAnimSlice { u16 *data; long offset; size_t size; } romAnimSlices[] = {")
+    for name, address, size in rom_slices:
+        print("{(u16 *)gMarioAnims.%s, 0x%x, %d}," % (name, address, size))
+    print("};")
+    print("int mario_anims_load(const char *path) {")
+    print("    FILE *rom = fopen(path, \"rb\");")
+    print("    if (!rom) return -1;")
+    print("    for (size_t i = 0; i < sizeof(romAnimSlices) / sizeof(romAnimSlices[0]); i++) {")
+    print("        const struct RomAnimSlice *slice = &romAnimSlices[i];")
+    print("        if (fseek(rom, slice->offset, SEEK_SET) != 0 ||")
+    print("            fread(slice->data, 1, slice->size, rom) != slice->size) {")
+    print("            fclose(rom);")
+    print("            return -1;")
+    print("        }")
+    print("        for (size_t word = 0; word < slice->size / 2; word++)")
+    print("            slice->data[word] = BE_TO_HOST16(slice->data[word]);")
+    print("    }")
+    print("    return fclose(rom) == 0 ? 0 : -1;")
+    print("}")
 
 except Exception as e:
     note = "NOTE! The mario animation C files are not processed by a normal C compiler, but by the script in tools/mario_anims_converter.py. The format is much more strict than normal C, so please follow the syntax of existing files.\n"

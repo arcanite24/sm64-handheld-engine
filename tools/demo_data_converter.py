@@ -41,6 +41,11 @@ def main():
         if not "ifdef" in item or any(d in defines for d in item["ifdef"]):
             demofiles.append(item)
 
+    if "VERSION_US" not in defines:
+        raise ValueError("Runtime demo inputs currently support only the US ROM")
+    with open("assets.json", "r") as file:
+        assets = json.load(file)
+
     structdef = ["u32 numEntries;",
                  "const void *addrPlaceholder;",
                  "struct OffsetSizePair entries[" + str(len(table)) + "];"]
@@ -56,14 +61,18 @@ def main():
         structobj.append("{" + offset_to_data + ", " + size + "},")
     structobj.append("},")
 
+    slices = []
     for item in demofiles:
-        with open("assets/demos/" + item["name"] + ".bin", "rb") as file:
-            demobytes = file.read()
-        structdef.append("u8 " + item["name"] + "[" + str(len(demobytes)) + "];")
-        structobj.append("{" + ",".join(hex(x) for x in demobytes) + "},")
+        name = item["name"]
+        size, versions = assets["assets/demos/" + name + ".bin"]
+        offset = versions["us"][0]
+        structdef.append("u8 " + name + "[" + str(size) + "];")
+        structobj.append("{0},")
+        slices.append((name, offset, size))
 
     print("#include \"types.h\"")
     print("#include <stddef.h>")
+    print("#include <stdio.h>")
     print("")
 
     print("struct DemoInputsObj {")
@@ -73,6 +82,13 @@ def main():
     for s in structobj:
         print(s)
     print("};")
+    print("int demo_inputs_load(const char *path) {")
+    print("    FILE *rom = fopen(path, \"rb\");")
+    print("    if (!rom) return -1;")
+    for name, offset, size in slices:
+        print("    if (fseek(rom, %d, SEEK_SET) != 0 || fread(gDemoInputs.%s, 1, %d, rom) != %d) { fclose(rom); return -1; }" % (offset, name, size, size))
+    print("    return fclose(rom) == 0 ? 0 : -1;")
+    print("}")
 
 if __name__ == "__main__":
     main()

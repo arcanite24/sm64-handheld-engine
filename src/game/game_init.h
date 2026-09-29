@@ -56,6 +56,8 @@ extern struct MarioAnimation gDemo;
 
 extern u8 gMarioAnims[];
 extern u8 gDemoInputs[];
+int mario_anims_load(const char *path);
+int demo_inputs_load(const char *path);
 
 extern u16 frameBufferIndex;
 extern u32 gGlobalTimer;
