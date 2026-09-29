@@ -234,9 +234,8 @@ static void save_main_menu_data(void) {
         bcopy(&gSaveBuffer.menuData[0], &gSaveBuffer.menuData[1], sizeof(gSaveBuffer.menuData[1]));
 
         // Write to EEPROM
-        write_eeprom_menudata(0, 2);
-
-        gMainMenuDataModified = FALSE;
+        if (write_eeprom_menudata(0, 2) == 0)
+            gMainMenuDataModified = FALSE;
     }
 }
 
@@ -364,9 +363,8 @@ void save_file_do_save(s32 fileIndex) {
               sizeof(gSaveBuffer.files[fileIndex][1]));
 
         // Write to EEPROM
-        write_eeprom_savefile(fileIndex, 0, 2);
-        
-        gSaveFileModified = FALSE;
+        if (write_eeprom_savefile(fileIndex, 0, 2) == 0)
+            gSaveFileModified = FALSE;
     }
     save_main_menu_data();
 #endif

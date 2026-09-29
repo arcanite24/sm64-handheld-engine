@@ -1,5 +1,8 @@
 #include <stdio.h>
 #include <string.h>
+#ifdef __ANDROID__
+#include <unistd.h>
+#endif
 #include "lib/src/libultra_internal.h"
 #include "macros.h"
 #include "platform.h"
@@ -178,12 +181,27 @@ s32 osEepromLongWrite(UNUSED OSMesgQueue *mq, u8 address, u8 *buffer, int nbytes
     }, content);
     s32 ret = 0;
 #else
+#ifdef __ANDROID__
+    const char *path = fs_get_write_path(SAVE_FILENAME);
+    char temp[SYS_MAX_PATH];
+    int length = snprintf(temp, sizeof(temp), "%s.tmp", path);
+    if (length < 0 || length >= (int) sizeof(temp)) return -1;
+    FILE *fp = fopen(temp, "wb");
+#else
     FILE *fp = fopen(fs_get_write_path(SAVE_FILENAME), "wb");
+#endif
     if (fp == NULL) {
         return -1;
     }
     s32 ret = fwrite(content, 1, 512, fp) == 512 ? 0 : -1;
-    fclose(fp);
+#ifdef __ANDROID__
+    if (fflush(fp) != 0 || fsync(fileno(fp)) != 0) ret = -1;
+#endif
+    if (fclose(fp) != 0) ret = -1;
+#ifdef __ANDROID__
+    if (ret == 0 && rename(temp, path) != 0) ret = -1;
+    if (ret != 0) remove(temp);
+#endif
 #endif
     return ret;
 }
