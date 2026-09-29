@@ -1,6 +1,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#ifdef __ANDROID__
+#include <sys/stat.h>
+#endif
+
 #ifdef TARGET_WEB
 #include <emscripten.h>
 #include <emscripten/html5.h>
@@ -227,7 +231,8 @@ void main_func(void) {
     const char *basedir = SDL_AndroidGetExternalStoragePath();
     char gamedir[SYS_MAX_PATH];
     snprintf(gamedir, sizeof(gamedir), "%s/%s", basedir, gCLIOpts.GameDir[0] ? gCLIOpts.GameDir : FS_BASEDIR);
-    if (stat(gamedir, NULL) == -1) {
+    struct stat game_dir_stat;
+    if (stat(gamedir, &game_dir_stat) == -1) {
         mkdir(gamedir, 0770);
     }
     move_to_new_dir("sound");
