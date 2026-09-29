@@ -418,6 +418,9 @@ static bool gfx_sdl_start_frame(void) {
     const double ticks = SDL_GetPerformanceCounter();
     if ((last_time == 0.0) || (last_time + 10.0 * perf_freq < ticks))
         last_time = ticks;
+#ifdef __ANDROID__
+    last_time = android_resync_frame_deadline(last_time, ticks, frame_time);
+#endif
     if (last_time + frame_time < ticks)
         ret = false;
     last_time += frame_time;

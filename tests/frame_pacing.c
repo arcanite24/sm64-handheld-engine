@@ -10,5 +10,7 @@ int main(void) {
     assert(android_swap_interval(240.0f) == 0);
     assert(android_swap_interval(INFINITY) == 0);
     assert(android_swap_interval(NAN) == 0);
+    assert(android_resync_frame_deadline(100.0, 110.0, 16.0) == 100.0);
+    assert(android_resync_frame_deadline(100.0, 150.0, 16.0) == 134.0);
     return 0;
 }

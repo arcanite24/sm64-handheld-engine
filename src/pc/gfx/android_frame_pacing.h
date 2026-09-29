@@ -8,4 +8,9 @@ static inline int android_swap_interval(float refresh_hz) {
     return 0;
 }
 
+// A long render stall should cost one late frame, not a burst of catch-up drops.
+static inline double android_resync_frame_deadline(double last_time, double ticks, double frame_time) {
+    return ticks > last_time + 2.0 * frame_time ? ticks - frame_time : last_time;
+}
+
 #endif
